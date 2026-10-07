@@ -317,6 +317,8 @@ const App: React.FC = () => {
   const [isManualTime, setIsManualTime] = useState(false);
   const [isManualDate, setIsManualDate] = useState(false);
   const [isCheckingAttendance, setIsCheckingAttendance] = useState(false);
+  const [isLoadingTeacherAttendance, setIsLoadingTeacherAttendance] =
+    useState(false);
 
   const [studentLocation, setStudentLocation] = useState<{
     latitude: number;
@@ -677,11 +679,29 @@ const App: React.FC = () => {
       filterKelas &&
       selectedMapelGuru
     ) {
-      fetchAttendanceData(false, {
-        date: teacherForm.date,
-        mapel: selectedMapelGuru,
-        class: filterKelas,
-      });
+      let cancelled = false;
+
+      // Tombol dikunci sampai data selesai dimuat
+      setIsLoadingTeacherAttendance(true);
+
+      fetchAttendanceData(
+        false,
+        {
+          date: teacherForm.date,
+          mapel: selectedMapelGuru,
+          class: filterKelas,
+        },
+        () => {
+          // Abaikan hasil jika filter sudah berubah lagi (request lama)
+          if (!cancelled) setIsLoadingTeacherAttendance(false);
+        }
+      );
+
+      return () => {
+        cancelled = true;
+      };
+    } else {
+      setIsLoadingTeacherAttendance(false);
     }
   }, [currentPage, userRole, teacherForm.date, selectedMapelGuru, filterKelas]);
 
@@ -701,7 +721,8 @@ const App: React.FC = () => {
 
   const fetchAttendanceData = async (
     showLoading = true,
-    filters?: { month?: string; mapel?: string; class?: string; date?: string }
+    filters?: { month?: string; mapel?: string; class?: string; date?: string },
+    onDone?: () => void
   ) => {
     if (showLoading) {
       setLoading(true);
@@ -733,6 +754,7 @@ const App: React.FC = () => {
       if (showLoading) {
         setLoading(false);
       }
+      if (onDone) onDone();
     }
   };
 
@@ -3072,6 +3094,12 @@ const App: React.FC = () => {
             <p>Alpha</p>
           </div>
         </div>
+        {isLoadingTeacherAttendance && (
+          <div className="mb-3 flex items-center justify-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-sm px-3 py-2 rounded-lg">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            Memuat data absensi dari server...
+          </div>
+        )}
         {/* Daftar Siswa */}
         <div className="overflow-x-auto">
           {selectedMapelGuru === "" || filterKelas === "" ? (
@@ -3109,7 +3137,10 @@ const App: React.FC = () => {
                     {/* ✅ EDIT: space-x-1 untuk mobile, sm:space-x-2 untuk desktop; flex-shrink-0 agar tidak menyusut */}
                     <button
                       onClick={() => handleSelectStatus(student, "Hadir")}
-                      disabled={!!absensiHariIni[student.nisn]}
+                      disabled={
+                        isLoadingTeacherAttendance ||
+                        !!absensiHariIni[student.nisn]
+                      }
                       className={`px-2 py-1 rounded-lg text-xs sm:text-sm sm:px-3 ${
                         /* ✅ EDIT: px-2 py-1 text-xs untuk mobile, sm:px-3 sm:text-sm untuk desktop */
                         tempStatus === "Hadir"
@@ -3120,13 +3151,16 @@ const App: React.FC = () => {
                             ) === "Hadir"
                           ? "bg-green-600 text-white"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      } transition duration-200 whitespace-nowrap`} /* ✅ EDIT: Tambah whitespace-nowrap agar tombol tidak wrap */
+                      } transition duration-200 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       Hadir
                     </button>
                     <button
                       onClick={() => handleSelectStatus(student, "Izin")}
-                      disabled={!!absensiHariIni[student.nisn]}
+                      disabled={
+                        isLoadingTeacherAttendance ||
+                        !!absensiHariIni[student.nisn]
+                      }
                       className={`px-2 py-1 rounded-lg text-xs sm:text-sm sm:px-3 ${
                         tempStatus === "Izin"
                           ? "bg-yellow-600 text-white"
@@ -3136,13 +3170,16 @@ const App: React.FC = () => {
                             ) === "Izin"
                           ? "bg-yellow-600 text-white"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      } transition duration-200 whitespace-nowrap`}
+                      } transition duration-200 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       Izin
                     </button>
                     <button
                       onClick={() => handleSelectStatus(student, "Sakit")}
-                      disabled={!!absensiHariIni[student.nisn]}
+                      disabled={
+                        isLoadingTeacherAttendance ||
+                        !!absensiHariIni[student.nisn]
+                      }
                       className={`px-2 py-1 rounded-lg text-xs sm:text-sm sm:px-3 ${
                         tempStatus === "Sakit"
                           ? "bg-purple-600 text-white"
@@ -3152,13 +3189,16 @@ const App: React.FC = () => {
                             ) === "Sakit"
                           ? "bg-purple-600 text-white"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      } transition duration-200 whitespace-nowrap`}
+                      } transition duration-200 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       Sakit
                     </button>
                     <button
                       onClick={() => handleSelectStatus(student, "Alpha")}
-                      disabled={!!absensiHariIni[student.nisn]}
+                      disabled={
+                        isLoadingTeacherAttendance ||
+                        !!absensiHariIni[student.nisn]
+                      }
                       className={`px-2 py-1 rounded-lg text-xs sm:text-sm sm:px-3 ${
                         tempStatus === "Alpha"
                           ? "bg-red-600 text-white"
@@ -3168,7 +3208,7 @@ const App: React.FC = () => {
                             ) === "Alpha"
                           ? "bg-red-600 text-white"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      } transition duration-200 whitespace-nowrap`}
+                      } transition duration-200 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       Alpha
                     </button>
