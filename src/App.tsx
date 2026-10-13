@@ -1801,6 +1801,37 @@ const App: React.FC = () => {
     }
   };
 
+  const kembaliKeHalamanSebelumnya = () => {
+    // Jika memilih peran Siswa → langsung ke link khusus siswa
+    if (loginForm.role === "Siswa") {
+      window.location.replace(
+        "https://app-siswa-pkbm-bungung-salapang.vercel.app/"
+      );
+      return;
+    }
+
+    // Di dalam iframe → minta halaman induk yang menangani
+    if (window.top !== window.self) {
+      window.top?.postMessage({ type: "PKBM_KEMBALI" }, "*");
+      return;
+    }
+
+    // Ada riwayat browser → kembali ke halaman sebelumnya
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    // Tab baru tanpa riwayat → pakai referrer jika ada
+    if (document.referrer) {
+      window.location.replace(document.referrer);
+      return;
+    }
+
+    // Cadangan terakhir
+    window.location.replace("https://ajappai-v1.vercel.app/");
+  };
+
   const handleLogout = () => {
     kembaliKePKBM();
   };
@@ -2536,17 +2567,16 @@ const App: React.FC = () => {
           {loginForm.loading ? "⏳ Memproses..." : "Login"}
         </button>
 
-        {/* ✅ TAMBAHKAN KONDISI: Tombol Kembali hanya muncul jika dari link PKBM */}
-        {isFromPKBM && (
-          <div className="mt-4">
-            <button
-              onClick={kembaliKePKBM}
-              className="block w-full text-center bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-lg transition duration-200"
-            >
-              ← Kembali
-            </button>
-          </div>
-        )}
+        {/* Tombol Kembali: tampil untuk Guru maupun Siswa */}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={kembaliKeHalamanSebelumnya}
+            className="block w-full text-center bg-gray-600 hover:bg-gray-700 text-white p-3 rounded-lg transition duration-200"
+          >
+            ← Kembali
+          </button>
+        </div>
       </div>
     </div>
   );
